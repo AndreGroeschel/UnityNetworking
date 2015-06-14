@@ -28,13 +28,18 @@ using System.Collections;
 namespace Kontraproduktiv
 {
     /// <summary>
-    /// Syncronizes the player's head orientation over the network
+    /// Syncronizes the player's orientation as well as the head orientation over the network
     /// </summary>
-    public class PlayerHeadRotation : NetworkBehaviour 
+    public class PlayerRotationSync : NetworkBehaviour 
 	{
         #region MEMBER VARIABLES
         [SyncVar]
-        private Quaternion m_SyncPlayerRotation;
+        private Quaternion m_SyncRotation;
+        [SyncVar]
+        private Quaternion m_SyncHeadRotation;
+
+        [SerializeField]
+        private Transform m_Transform;
 
         [SerializeField]
         private Transform m_HeadTransform;
@@ -54,8 +59,10 @@ namespace Kontraproduktiv
             if (m_HeadTransform == null)
             {
                 m_HeadTransform = transform;
-                
             }
+
+            if (m_Transform == null)
+                m_Transform = transform;
         }
 
         void FixedUpdate()
@@ -77,21 +84,23 @@ namespace Kontraproduktiv
         #region METHODS
         private void InterpolateRotation()
         {
-            m_HeadTransform.rotation = Quaternion.Lerp(m_HeadTransform.rotation, m_SyncPlayerRotation, Time.deltaTime * m_SmoothingFactor);
+            m_Transform.rotation = Quaternion.Lerp(m_Transform.rotation, m_SyncRotation, Time.deltaTime * m_SmoothingFactor);
+            m_HeadTransform.rotation = Quaternion.Lerp(m_HeadTransform.rotation, m_SyncHeadRotation, Time.deltaTime * m_SmoothingFactor);
         }
         #endregion
 
         #region NETWORKING METHODS
         [Command]
-        void CmdProvideRotationToServer(Quaternion in_Rotation)
+        void CmdProvideRotationToServer(Quaternion in_Rotation, Quaternion in_HeadRotation)
         {
-            m_SyncPlayerRotation = in_Rotation;
+            m_SyncRotation = in_Rotation;
+            m_SyncHeadRotation = in_HeadRotation;
         }
 
         [ClientCallback]
         private void TransmitRotation()
         {
-            CmdProvideRotationToServer(m_PlayerCamera.rotation);
+            CmdProvideRotationToServer(m_Transform.rotation, m_PlayerCamera.rotation);
         }
         #endregion
 

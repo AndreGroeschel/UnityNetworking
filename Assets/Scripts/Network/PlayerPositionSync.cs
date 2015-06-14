@@ -41,6 +41,13 @@ namespace Kontraproduktiv
 
 		[SerializeField]
 		private float m_SmoothingFactor;
+
+        // minimum distance in meters the player has to move before transmitting the new position to the server
+        [SerializeField]
+        private float m_MoveThreshold = 0.5f;
+
+        private Vector3 m_PreviousPosition;
+
         #endregion
 
         #region UNITY FUNCTIONS
@@ -50,23 +57,22 @@ namespace Kontraproduktiv
 			if(m_PlayerTransform == null)
 				m_PlayerTransform = transform;
 		}
-		
+
+        void Update()
+        {
+            if (isLocalPlayer == false)
+            {
+                // interpolate positions of other players
+                InterpolatePostion();
+            }
+        }
+
 		void FixedUpdate ()
 		{		
 			if(isLocalPlayer == true)
 			{
 				// transmit position to server
 				TransmitPosition();
-
-                // transmit rotation to server
-                //TransmitRotation();
-            }
-			
-			else
-			{
-                // interpolate positions of other players
-                InterpolatePostion();
-
             }
 		}
         #endregion
@@ -91,7 +97,18 @@ namespace Kontraproduktiv
         [ClientCallback]
 		private void TransmitPosition()
 		{
-			CmdProvidePositionToServer(m_PlayerTransform.position);
+            bool hasPlayerMoved = Vector3.Distance(m_PlayerTransform.position, m_PreviousPosition) >= m_MoveThreshold;
+
+            if(hasPlayerMoved == true)
+            {
+                CmdProvidePositionToServer(m_PlayerTransform.position);
+
+                // store last position
+                m_PreviousPosition = m_PlayerTransform.position;
+
+                Debug.Log("Player moved");
+            }
+			
 		}
         #endregion
 

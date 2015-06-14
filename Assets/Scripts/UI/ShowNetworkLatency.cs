@@ -22,51 +22,36 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 */
 using UnityEngine;
+using UnityEngine.UI;
 using UnityEngine.Networking;
 using System.Collections;
 
 namespace Kontraproduktiv
 {
 	/// <summary>
-	/// Sets up the player for networking. Switches player components on / off if player is local or network client
+	/// Displays the latency in a UI
 	/// </summary>
-	public class PlayerNetworkSetup : NetworkBehaviour
+	public class ShowNetworkLatency : NetworkBehaviour 
 	{
         #region MEMBER VARIABLES
-        [SerializeField]
-        private GameObject m_Head;
+        public Text m_Label;
 
-        [SerializeField]
-        private GameObject m_UI;
+        private NetworkClient m_NetworkClient;
+		#endregion
+		
+		#region UNITY FUNCTIONS
 
-        #endregion
-
-        #region UNITY FUNCTIONS
-
-        void Start()
+		
+		void Start ()
 		{
-			// enable components that are required if player is local
-			Camera cam = GetComponentInChildren<Camera>();
-			AudioListener audioListener = GetComponentInChildren<AudioListener>();
-			UnityStandardAssets.Characters.FirstPerson.FirstPersonController fpsController = GetComponent<UnityStandardAssets.Characters.FirstPerson.FirstPersonController>();
-
-			if(isLocalPlayer == true)
-			{	
-				cam.enabled = true;
-				audioListener.enabled = true;
-				fpsController.enabled = true;
-                m_Head.SetActive(false);
-                m_UI.SetActive(true);
-            }
-			else
-			{
-				cam.enabled = false;
-				audioListener.enabled = false;
-				fpsController.enabled = false;
-                m_Head.SetActive(true);
-                m_UI.SetActive(false);
-            }
+            m_NetworkClient = GameObject.Find("Network Manager").GetComponent<NetworkManager>().client;
 		}
+		
+		void Update ()
+		{
+            if(isLocalPlayer == true)
+                m_Label.text = "Latency: " + m_NetworkClient.GetRTT().ToString();
+        }
 		
 		#endregion
 		

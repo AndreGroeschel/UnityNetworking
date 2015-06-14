@@ -50,6 +50,13 @@ namespace Kontraproduktiv
         [SerializeField]
         private float m_SmoothingFactor = 15f;
 
+        // minimum rotation angle in degrees the player has to turn before transmitting the new orientation to the server
+        [SerializeField]
+        private float m_MinTurnTreshold = 5f;
+
+        private Quaternion m_PreviousOrientation;
+        private Quaternion m_PreviousHeadOrientation;
+
         #endregion
 
         #region UNITY FUNCTIONS
@@ -65,18 +72,23 @@ namespace Kontraproduktiv
                 m_Transform = transform;
         }
 
+        void Update()
+        {
+            // interpolate head rotations of other players at each frame
+            if (isLocalPlayer == false)
+            {
+                InterpolateRotation();
+            }
+        }
+
         void FixedUpdate()
         {
             if (isLocalPlayer == true)
             {
-                // transmit rotation to server
+                // transmit rotation to server at fixed interval
                 TransmitRotation();
             }
-            // interpolate head rotations of other players
-            else
-            {
-                InterpolateRotation();
-            }
+           
         }
 
         #endregion
@@ -100,7 +112,20 @@ namespace Kontraproduktiv
         [ClientCallback]
         private void TransmitRotation()
         {
-            CmdProvideRotationToServer(m_Transform.rotation, m_PlayerCamera.rotation);
+            bool hasPlayerTurned = Quaternion.Angle(m_Transform.rotation, m_PreviousOrientation) > m_MinTurnTreshold
+                                || Quaternion.Angle(m_PlayerCamera.rotation, m_PreviousHeadOrientation) > m_MinTurnTreshold;
+            
+            if(hasPlayerTurned == true)
+            {
+                CmdProvideRotationToServer(m_Transform.rotation, m_PlayerCamera.rotation);
+
+                // store snapshot of orientations
+                m_PreviousOrientation = m_Transform.rotation;
+                m_PreviousHeadOrientation = m_PlayerCamera.rotation;
+
+                Debug.Log("Player turned");
+            }
+
         }
         #endregion
 

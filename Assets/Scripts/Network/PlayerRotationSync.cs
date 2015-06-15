@@ -24,6 +24,7 @@ THE SOFTWARE.
 using UnityEngine;
 using UnityEngine.Networking;
 using System.Collections;
+using System.Collections.Generic;
 
 namespace Kontraproduktiv
 {
@@ -47,8 +48,11 @@ namespace Kontraproduktiv
         [SerializeField]
         private Transform m_PlayerCamera;
 
-        [SerializeField]
         private float m_SmoothingFactor = 15f;
+        [SerializeField]
+        private float m_SmoothingFactorNormal = 15f;
+        [SerializeField]
+        private float m_SmoothingFactorFast = 25f;
 
         // minimum rotation angle in degrees the player has to turn before transmitting the new orientation to the server
         [SerializeField]
@@ -56,6 +60,7 @@ namespace Kontraproduktiv
 
         private Quaternion m_PreviousOrientation;
         private Quaternion m_PreviousHeadOrientation;
+
 
         #endregion
 
@@ -96,8 +101,10 @@ namespace Kontraproduktiv
         #region METHODS
         private void InterpolateRotation()
         {
-            m_Transform.rotation = Quaternion.Lerp(m_Transform.rotation, m_SyncRotation, Time.deltaTime * m_SmoothingFactor);
-            m_HeadTransform.rotation = Quaternion.Lerp(m_HeadTransform.rotation, m_SyncHeadRotation, Time.deltaTime * m_SmoothingFactor);
+            if(m_SyncRotation != null)
+                m_Transform.rotation = Quaternion.Lerp(m_Transform.rotation, m_SyncRotation, Time.deltaTime * m_SmoothingFactor);
+            if (m_SyncHeadRotation != null)
+                m_HeadTransform.rotation = Quaternion.Lerp(m_HeadTransform.rotation, m_SyncHeadRotation, Time.deltaTime * m_SmoothingFactor);
         }
         #endregion
 

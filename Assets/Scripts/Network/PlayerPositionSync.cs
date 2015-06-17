@@ -31,7 +31,7 @@ namespace Kontraproduktiv
 	/// <summary>
 	/// Syncronizes the player's postion over the network
 	/// </summary>
-    [NetworkSettings (channel = 0,sendInterval = 0.03f)]
+    [NetworkSettings (channel = 0,sendInterval = 0.1f)]
 	public class PlayerPositionSync : NetworkBehaviour 
 	{
 		#region MEMBER VARIABLES
@@ -41,7 +41,8 @@ namespace Kontraproduktiv
 		[SerializeField]
 		private Transform m_PlayerTransform;
 
-        private float m_SmoothingFactor = 15f;
+        private float m_SmoothingFactor;
+
         [SerializeField]
         private float m_SmoothingFactorNormal = 15f;
         [SerializeField]
@@ -78,9 +79,9 @@ namespace Kontraproduktiv
             {
                 if (m_UseHistoricalInterpolation == true)
                     InterpolateHistorical();
-                else
+                //else
                     // interpolate positions of other players
-                    InterpolatePostion();
+                    //InterpolatePostion();
             }
         }
 
@@ -94,6 +95,17 @@ namespace Kontraproduktiv
 				TransmitPosition();
             }
 		}
+
+        void OnDrawGizmos()
+        {
+
+            Gizmos.color = Color.green;
+            foreach(Vector3 position in m_SyncPositions)
+            {
+
+                Gizmos.DrawWireSphere(position, 0.2f);
+            }
+        }
         #endregion
 
 
@@ -157,11 +169,13 @@ namespace Kontraproduktiv
         /// <summary>
         /// Hook for position sync. Stores latest position in a queue
         /// </summary>
-        [Client]
+        [ClientCallback]
         private void SyncPositions(Vector3 in_Position)
         {
             m_SyncPlayerPostion = in_Position;
-            m_SyncPositions.Add(in_Position);
+
+            if(!isLocalPlayer)
+                m_SyncPositions.Add(in_Position);
         }
         #endregion
 

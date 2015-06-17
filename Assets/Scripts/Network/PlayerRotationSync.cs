@@ -34,19 +34,28 @@ namespace Kontraproduktiv
     public class PlayerRotationSync : NetworkBehaviour 
 	{
         #region MEMBER VARIABLES
-        [SyncVar]
-        private Quaternion m_SyncRotation;
-        [SyncVar]
-        private Quaternion m_SyncHeadRotation;
-
+        /// root transform of player
         [SerializeField]
         private Transform m_Transform;
-
+        /// head transform of player
         [SerializeField]
         private Transform m_HeadTransform;
-
+        /// the player's camera
         [SerializeField]
         private Transform m_PlayerCamera;
+
+        /// syncs head rotation over network
+        [SyncVar(hook = "SyncRotations")]
+        private float m_SyncRotation;
+        /// syncs head rotation over network
+        [SyncVar(hook = "SyncHeadRotations")]
+        private Quaternion m_SyncHeadRotation;
+
+        // sync head rotations of other players, used for historical interpolation
+        private List<float> m_SyncRotations = new List<float>();
+
+        // sync head rotations of other players, used for historical interpolation
+        private List<Quaternion> m_SyncHeadRotations = new List<Quaternion>();
 
         private float m_SmoothingFactor = 15f;
         [SerializeField]
@@ -59,8 +68,11 @@ namespace Kontraproduktiv
         private float m_MinTurnTreshold = 5f;
 
         private Quaternion m_PreviousOrientation;
+        private float m_PreviousRotationAngle;
         private Quaternion m_PreviousHeadOrientation;
 
+        [SerializeField]
+        private float m_RotationRemoveTreshold = 3f;
 
         #endregion
 
@@ -75,6 +87,8 @@ namespace Kontraproduktiv
 
             if (m_Transform == null)
                 m_Transform = transform;
+
+            m_SmoothingFactor = m_SmoothingFactorNormal;
         }
 
         void Update()
@@ -101,16 +115,58 @@ namespace Kontraproduktiv
         #region METHODS
         private void InterpolateRotation()
         {
-            if(m_SyncRotation != null)
-                m_Transform.rotation = Quaternion.Lerp(m_Transform.rotation, m_SyncRotation, Time.deltaTime * m_SmoothingFactor);
-            if (m_SyncHeadRotation != null)
-                m_HeadTransform.rotation = Quaternion.Lerp(m_HeadTransform.rotation, m_SyncHeadRotation, Time.deltaTime * m_SmoothingFactor);
+
+            //LerpSimple();
+            InterpolateHistorical();
+
         }
         #endregion
 
+        private void InterpolateSimple()
+        {
+            Vector3 playerRotation = new Vector3(0f, m_SyncRotation, 0f);
+            m_Transform.rotation = Quaternion.Lerp(m_Transform.rotation, Quaternion.Euler(playerRotation), Time.deltaTime * m_SmoothingFactor);
+        }
+        /// <summary>
+        /// Interpolates the root transform's and the head transform's rotation based on history of rotations that have been received via the network
+        /// </summary>
+        private void InterpolateHistorical()
+        {
+            if(m_SyncRotations.Count > 0)
+            {
+                Vector3 playerRotation = new Vector3(0f, m_SyncRotations[0], 0f);
+                m_Transform.rotation = Quaternion.Lerp(m_Transform.rotation, Quaternion.Euler(playerRotation), Time.deltaTime * m_SmoothingFactor);
+
+                // remove rotation if it is within threshold
+                if (Mathf.Abs(m_Transform.eulerAngles.y - m_SyncRotations[0]) < m_RotationRemoveTreshold)
+                    m_SyncRotations.RemoveAt(0);
+            }
+
+
+            if (m_SyncHeadRotations.Count > 0)
+            {
+                if (m_HeadTransform.rotation != m_SyncHeadRotations[0])
+                {
+                    m_HeadTransform.rotation = Quaternion.Lerp(m_HeadTransform.rotation, m_SyncHeadRotations[0], Time.deltaTime * m_SmoothingFactor);
+                }
+
+                // remove head rotation if it is within threshold
+                if (Quaternion.Angle(m_HeadTransform.rotation, m_SyncHeadRotations[0]) < m_RotationRemoveTreshold)
+                {
+                    m_SyncHeadRotations.RemoveAt(0);
+                }
+            }
+
+            // lerp faster when queue becomes too long
+            if (m_SyncRotations.Count > 10 || m_SyncHeadRotations.Count > 10)
+                m_SmoothingFactor = m_SmoothingFactorFast;
+            else
+                m_SmoothingFactor = m_SmoothingFactorNormal;
+        }
+
         #region NETWORKING METHODS
         [Command]
-        void CmdProvideRotationToServer(Quaternion in_Rotation, Quaternion in_HeadRotation)
+        void CmdProvideRotationToServer(float in_Rotation, Quaternion in_HeadRotation)
         {
             m_SyncRotation = in_Rotation;
             m_SyncHeadRotation = in_HeadRotation;
@@ -119,20 +175,44 @@ namespace Kontraproduktiv
         [ClientCallback]
         private void TransmitRotation()
         {
-            bool hasPlayerTurned = Quaternion.Angle(m_Transform.rotation, m_PreviousOrientation) > m_MinTurnTreshold
-                                || Quaternion.Angle(m_PlayerCamera.rotation, m_PreviousHeadOrientation) > m_MinTurnTreshold;
+
+            bool hasPlayerTurned = (Mathf.Abs(m_Transform.eulerAngles.y- m_PreviousRotationAngle) > m_MinTurnTreshold)
+                                 || Quaternion.Angle(m_PlayerCamera.rotation, m_PreviousHeadOrientation) > m_MinTurnTreshold; ;
             
             if(hasPlayerTurned == true)
             {
-                CmdProvideRotationToServer(m_Transform.rotation, m_PlayerCamera.rotation);
+                CmdProvideRotationToServer(m_Transform.eulerAngles.y, m_PlayerCamera.rotation);
 
-                // store snapshot of orientations
-                m_PreviousOrientation = m_Transform.rotation;
+                // store snapshot of rotations
+                m_PreviousRotationAngle = m_Transform.eulerAngles.y;
                 m_PreviousHeadOrientation = m_PlayerCamera.rotation;
 
-                Debug.Log("Player turned");
             }
 
+        }
+
+        /// <summary>
+        /// Hook for root rotation syncing. Stores latest rotation in a queue
+        /// </summary>
+        [ClientCallback]
+        private void SyncRotations(float in_Angle)
+        {
+            m_SyncRotation = in_Angle;
+
+            if (!isLocalPlayer)
+                m_SyncRotations.Add(in_Angle);
+        }
+
+        /// <summary>
+        /// Hook for head rotation syncing
+        /// </summary>
+        [ClientCallback]
+        private void SyncHeadRotations(Quaternion in_Rotation)
+        {
+            m_SyncHeadRotation = in_Rotation;
+
+            if (!isLocalPlayer)
+                m_SyncHeadRotations.Add(in_Rotation);
         }
         #endregion
 

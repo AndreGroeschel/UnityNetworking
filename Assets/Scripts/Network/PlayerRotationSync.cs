@@ -31,6 +31,7 @@ namespace Kontraproduktiv
     /// <summary>
     /// Syncronizes the player's orientation as well as the head orientation over the network
     /// </summary>
+    [NetworkSettings (channel = 0,sendInterval = 0.1f)]
     public class PlayerRotationSync : NetworkBehaviour 
 	{
         #region MEMBER VARIABLES
@@ -126,6 +127,7 @@ namespace Kontraproduktiv
         {
             Vector3 playerRotation = new Vector3(0f, m_SyncRotation, 0f);
             m_Transform.rotation = Quaternion.Lerp(m_Transform.rotation, Quaternion.Euler(playerRotation), Time.deltaTime * m_SmoothingFactor);
+            m_HeadTransform.rotation = Quaternion.Lerp(m_HeadTransform.rotation, m_SyncHeadRotation, Time.deltaTime * m_SmoothingFactor);
         }
         /// <summary>
         /// Interpolates the root transform's and the head transform's rotation based on history of rotations that have been received via the network
@@ -142,6 +144,7 @@ namespace Kontraproduktiv
                     m_SyncRotations.RemoveAt(0);
             }
 
+            //Debug.Log("Rotations root: " + m_SyncHeadRotations.Count + " ### Rotations head: " + m_SyncHeadRotations.Count);
 
             if (m_SyncHeadRotations.Count > 0)
             {
@@ -158,7 +161,7 @@ namespace Kontraproduktiv
             }
 
             // lerp faster when queue becomes too long
-            if (m_SyncRotations.Count > 10 || m_SyncHeadRotations.Count > 10)
+            if (m_SyncRotations.Count > 5 || m_SyncHeadRotations.Count > 5)
                 m_SmoothingFactor = m_SmoothingFactorFast;
             else
                 m_SmoothingFactor = m_SmoothingFactorNormal;

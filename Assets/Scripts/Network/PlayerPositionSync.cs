@@ -129,13 +129,13 @@ namespace Kontraproduktiv
                     m_SyncPositions.RemoveAt(0);
                 }
 
-                // TODO: lerp faster when queue becomes too long
+                // lerp faster when queue becomes too long
                 if (m_SyncPositions.Count > 10)
                     m_SmoothingFactor = m_SmoothingFactorFast;
                 else
                     m_SmoothingFactor = m_SmoothingFactorNormal;
 
-                Debug.Log(m_SyncPositions.Count.ToString());
+                //Debug.Log(m_SyncPositions.Count.ToString());
             }
         }
 
@@ -161,7 +161,7 @@ namespace Kontraproduktiv
                 // store last position
                 m_PreviousPosition = m_PlayerTransform.position;
 
-                Debug.Log("Player moved");
+                //Debug.Log("Player moved");
             }
 			
 		}

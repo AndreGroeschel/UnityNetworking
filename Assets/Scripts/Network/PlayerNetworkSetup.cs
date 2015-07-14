@@ -39,6 +39,15 @@ namespace Kontraproduktiv
         [SerializeField]
         private GameObject m_UI;
 
+        [SerializeField]
+        private GameObject m_Weapon;
+
+        [SerializeField]
+        private GameObject m_EgoPerspWeaponCam;
+
+        [SerializeField]
+        private string m_GunLayer;
+
         #endregion
 
         #region UNITY FUNCTIONS
@@ -57,6 +66,8 @@ namespace Kontraproduktiv
 				fpsController.enabled = true;
                 m_Head.SetActive(false);
                 m_UI.SetActive(true);
+                m_EgoPerspWeaponCam.SetActive(true);
+                m_Weapon.layer = LayerMask.NameToLayer(m_GunLayer);
             }
 			else
 			{
@@ -65,6 +76,8 @@ namespace Kontraproduktiv
 				fpsController.enabled = false;
                 m_Head.SetActive(true);
                 m_UI.SetActive(false);
+                m_EgoPerspWeaponCam.SetActive(false);
+                m_Weapon.layer = this.gameObject.layer;
             }
 		}
 		

@@ -32,7 +32,7 @@ namespace Kontraproduktiv
     {
 
         #region MEMBER VARIABLES
-        [SyncVar]
+        [SyncVar (hook = "OnPlayerIDChanged")]
         public string m_PlayerIdentity;
 
         private NetworkInstanceId m_PlayerID;
@@ -79,13 +79,12 @@ namespace Kontraproduktiv
                 string uniqueID = m_PlayerIdentity + m_PlayerID.ToString();
                 m_Transform.name = uniqueID;
                 CmdTransmitIdentityToServer(uniqueID);
-            }             
+            }
             else
             {
-                // use id provided by server
                 m_Transform.name = m_PlayerIdentity;
-            }
 
+            }             
             // after identity is set, disable this component
             this.enabled = false;
         }
@@ -94,6 +93,15 @@ namespace Kontraproduktiv
         private void CmdTransmitIdentityToServer(string in_ID)
         {
             m_PlayerIdentity = in_ID;
+        }
+    
+        private void OnPlayerIDChanged(string in_PlayerID)
+        {
+            Debug.Log("Player ID Set to " + in_PlayerID);
+            // use id provided by server
+            m_PlayerIdentity = in_PlayerID;
+            m_Transform.name = m_PlayerIdentity;
+
         }
 
     }
